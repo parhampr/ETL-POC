@@ -133,7 +133,7 @@ validate_setup() {
         "requirements.txt"
         ".env"
         "airflow/dags/zara_hybrid_etl.py"
-        "docetl/configs/paper_extraction.yaml"
+        "docetl/config/article_pipeline.yaml.j2"
     )
 
     missing_files=()
