@@ -1,0 +1,99 @@
+default_model: [[ default_model ]]
+parsing_tools:
+  - name: extract_pdf_text
+    function_code: |
+      from typing import Dict, List
+      def extract_pdf_text(item: Dict) -> List[Dict]:
+          import fitz
+          texts = []
+          with fitz.open(item["pdf_path"]) as doc:
+              for p in doc:
+                  texts.append(p.get_text())
+          return [{"full_text": "\n".join(texts)}]
+
+datasets:
+  arxiv_papers:
+    type: file
+    source: local
+    path: [[ dataset_json ]]
+    parsing:
+      - function: extract_pdf_text
+
+operations:
+  - name: extract_paper_content
+    type: map
+    prompt: |
+      Extract structured information from the paper text:
+
+      {{ input.full_text }}
+
+      Return JSON with fields:
+      title, authors, abstract_summary (2-3 sentences),
+      research_question, methodology, key_findings,
+      significance, limitations, arxiv_id (if known).
+    output:
+      schema:
+        title: string
+        authors: list[string]
+        abstract_summary: string
+        research_question: string
+        methodology: string
+        key_findings: string
+        significance: string
+        limitations: string
+        arxiv_id: string
+    validate:
+      - bool(output["title"])
+      - bool(output["abstract_summary"])
+      - len(output["abstract_summary"].split()) >= 25
+    num_retries_on_validate_failure: 2
+
+  - name: generate_news_article
+    type: map
+    optimize: true
+    prompt: |
+      Using the structured summary below, write a public-facing article.
+
+      Title: {{ input.title }}
+      Authors: {{ input.authors }}
+      Summary: {{ input.abstract_summary }}
+      Methods: {{ input.methodology }}
+      Findings: {{ input.key_findings }}
+      Significance: {{ input.significance }}
+      Limitations: {{ input.limitations }}
+
+      Requirements:
+      - Headline < 60 chars
+      - Dek < 150 chars
+      - 700-900 words, accessible
+      - 2-3 pull quotes
+      - "What This Means" section
+      - Meta description < 160 chars
+      - Topic tags
+
+      Return fields per schema.
+    output:
+      schema:
+        headline: string
+        subtitle: string
+        article_body: string
+        pull_quotes: list[string]
+        meta_description: string
+        key_takeaways: list[string]
+        topic_tags: list[string]
+        word_count: integer
+    validate:
+      - 700 <= output["word_count"] <= 1000
+      - len(output["headline"]) > 0 and len(output["headline"]) <= 60
+      - len(output["pull_quotes"]) >= 2
+    num_retries_on_validate_failure: 2
+
+pipeline:
+  steps:
+    - name: article_generation
+      input: arxiv_papers
+      operations: [extract_paper_content, generate_news_article]
+  output:
+    type: file
+    path: [[ output_json ]]
+    intermediate_dir: [[ intermediate_dir ]]

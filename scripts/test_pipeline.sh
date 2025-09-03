@@ -84,8 +84,6 @@ required_files=(
     "airflow/plugins/arxiv_hook.py"
     "airflow/plugins/docetl_operator.py"
     "airflow/plugins/__init__.py"
-    "docetl/configs/paper_extraction.yaml"
-    "docetl/configs/article_generation.yaml"
     "scripts/setup.sh"
     "scripts/monitor.sh"
 )
@@ -172,9 +170,6 @@ fi
 
 # Test 9: DocETL Configuration Validation
 print_info "=== DocETL Configuration Tests ==="
-
-run_test "Paper extraction config is valid YAML" "docker-compose exec -T docetl-worker python -c 'import yaml; yaml.safe_load(open(\"/app/docetl/configs/paper_extraction.yaml\")); print(\"Config OK\")'"
-run_test "Article generation config is valid YAML" "docker-compose exec -T docetl-worker python -c 'import yaml; yaml.safe_load(open(\"/app/docetl/configs/article_generation.yaml\")); print(\"Config OK\")'"
 
 # Test DocETL can run basic operations
 run_test "DocETL CLI is accessible" "docker-compose exec -T docetl-worker python -m docetl.cli --help | head -1"

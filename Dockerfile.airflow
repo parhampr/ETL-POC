@@ -16,6 +16,7 @@ RUN apt-get update \
 USER airflow
 
 RUN pip install --no-cache-dir \
+    Jinja2 \
     docetl \
     arxiv \
     PyMuPDF \
