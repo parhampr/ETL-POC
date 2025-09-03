@@ -1,0 +1,39 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    docetl \
+    arxiv \
+    PyMuPDF \
+    requests \
+    beautifulsoup4 \
+    lxml \
+    pandas \
+    numpy \
+    scikit-learn \
+    litellm \
+    openai \
+    anthropic \
+    pyyaml \
+    jinja2
+
+# Create directories
+RUN mkdir -p /app/logs /app/configs /app/scripts /data/input /data/processed /data/output
+
+# Copy DocETL configurations and scripts
+COPY docetl/ /app/docetl/
+COPY data/ /data/
+
+WORKDIR /app
+
+# Default command
+CMD ["python", "-c", "import docetl; print('DocETL container ready')"]

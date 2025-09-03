@@ -1,0 +1,42 @@
+FROM apache/airflow:3.0.6-python3.11
+
+USER root
+
+# Install system dependencies
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+         vim \
+         git \
+         curl \
+         build-essential \
+  && apt-get autoremove -yqq --purge \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+RUN pip install --no-cache-dir \
+    docetl \
+    arxiv \
+    PyMuPDF \
+    requests \
+    beautifulsoup4 \
+    lxml \
+    pandas \
+    numpy \
+    scikit-learn \
+    litellm \
+    openai \
+    anthropic
+
+# Install FAB auth manager separately to handle Flask version conflicts
+RUN pip install --no-cache-dir apache-airflow-providers-fab
+
+# Create necessary directories
+RUN mkdir -p /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins
+
+# Copy custom plugins and configurations
+COPY --chown=airflow:root airflow/plugins /opt/airflow/plugins/
+COPY --chown=airflow:root airflow/config /opt/airflow/config/
+
+WORKDIR /opt/airflow

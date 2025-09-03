@@ -1,0 +1,278 @@
+# DocETL Configuration for Article Generation Only
+# This is a simplified pipeline that focuses just on article generation
+# from already extracted content (useful for testing and development)
+
+default_model: gpt-4o-mini
+
+datasets:
+  extracted_content:
+    type: file
+    source: local
+    path: "/data/processed/extracted_papers.json"
+
+operations:
+  # Step 1: Generate engaging news articles from structured content
+  - name: generate_engaging_article
+    type: map
+    prompt: |
+      You are an expert science journalist. Transform this research summary into a compelling, accessible news article.
+      
+      **ARTICLE REQUIREMENTS:**
+      
+      **Structure & Content:**
+      1. **Headline** (45-60 characters): Compelling, accurate, SEO-friendly
+      2. **Subtitle/Dek** (120-150 characters): Expands on headline with key detail
+      3. **Lead Paragraph** (50-75 words): Hook with the most newsworthy finding
+      4. **Body** (600-800 words total):
+         - Problem/Context: Why this research matters
+         - Approach: What researchers did (simplified)
+         - Discovery: Key findings with specific numbers/results
+         - Impact: Real-world implications and applications
+         - Future: What comes next or limitations
+      
+      **Writing Style:**
+      - Active voice and present tense where possible
+      - Conversational but authoritative tone
+      - Explain jargon immediately when used
+      - Use concrete examples and analogies
+      - Include specific numbers and percentages
+      - Focus on human benefit and practical impact
+      
+      **Engagement Elements:**
+      - 2-3 pull quotes (compelling statements that could be researcher quotes)
+      - "What This Means" callout box (2-3 sentences on practical implications)
+      - 3-4 key takeaways as bullet points
+      
+      **SEO & Web Optimization:**
+      - Meta description (150-160 characters)
+      - 5-7 relevant topic tags
+      - Alt text for potential hero image
+      - URL slug suggestion
+      
+      **Quality Standards:**
+      - Scientifically accurate to source material
+      - Accessible to college-educated general audience
+      - Engaging enough to hold attention throughout
+      - Scannable with subheadings and short paragraphs
+      - Shareable and memorable
+      
+      Return structured JSON with all components clearly organized.
+    optimize: true
+    output_schema:
+      article_structure:
+        headline: string
+        subtitle: string
+        lead_paragraph: string
+        body_sections:
+          problem_context: string
+          research_approach: string
+          key_discovery: string
+          real_world_impact: string
+          future_implications: string
+      engagement_elements:
+        pull_quotes: list
+        what_this_means_box: string
+        key_takeaways: list
+      seo_metadata:
+        meta_description: string
+        topic_tags: list
+        image_alt_text: string
+        url_slug: string
+      article_metrics:
+        word_count: integer
+        reading_time_minutes: integer
+        complexity_level: string
+        target_audience: string
+      source_attribution:
+        paper_title: string
+        authors: list
+        arxiv_id: string
+        original_categories: list
+    validation:
+      - "Is the headline compelling and under 60 characters?"
+      - "Does the lead paragraph hook readers with the key finding?"
+      - "Are technical concepts explained clearly for general audiences?"
+      - "Is the article 600-800 words with good flow?"
+      - "Are all claims supported by the source research?"
+
+  # Step 2: Create social media variations
+  - name: create_social_variants
+    type: map
+    prompt: |
+      Create social media-optimized versions of this article for different platforms.
+      
+      **Platform Requirements:**
+      
+      **Twitter/X Thread (5-7 tweets):**
+      - Tweet 1: Hook with key finding (280 chars)
+      - Tweets 2-4: Explain the research and impact
+      - Tweet 5-6: Implications and applications
+      - Final tweet: Link to full article
+      
+      **LinkedIn Post (1200 chars):**
+      - Professional tone
+      - Focus on business/career implications
+      - Include relevant hashtags
+      - Call-to-action for engagement
+      
+      **Facebook Post (500 chars):**
+      - Conversational tone
+      - Emphasize human interest angle
+      - Include engaging question for comments
+      
+      **Instagram Caption (2200 chars):**
+      - Visual storytelling approach
+      - Include relevant hashtags (10-15)
+      - Engaging hook in first line
+      - Story-driven narrative
+      
+      Make each version platform-appropriate while maintaining scientific accuracy.
+    optimize: true
+    output_schema:
+      social_media_content:
+        twitter_thread: list
+        linkedin_post: string
+        facebook_post: string
+        instagram_caption: string
+      hashtags_by_platform:
+        twitter: list
+        linkedin: list
+        instagram: list
+      engagement_hooks:
+        question_prompts: list
+        call_to_action: list
+      visual_suggestions:
+        twitter_card_text: string
+        linkedin_image_idea: string
+        instagram_visual_concept: string
+
+  # Step 3: Generate newsletter and email versions
+  - name: create_email_versions
+    type: map
+    prompt: |
+      Create email marketing versions of this article for different audience segments.
+      
+      **Email Versions Required:**
+      
+      **Newsletter Version (800-1000 words):**
+      - Catchy subject line (under 50 chars)
+      - Personal greeting tone
+      - Structured with clear sections
+      - Include "Why This Matters to You" section
+      - Call-to-action to read full article
+      
+      **Executive Summary (300-400 words):**
+      - Business-focused subject line
+      - Professional tone
+      - Focus on market implications
+      - Include key statistics
+      - Bottom-line impact statement
+      
+      **Digest Version (150-200 words):**
+      - Ultra-concise subject line
+      - Bullet-point format
+      - Key takeaways only
+      - One-click link to full article
+      
+      **Educational Version (600-700 words):**
+      - Learning-focused subject line
+      - Explain the science in more detail
+      - Include background context
+      - Educational takeaways
+      - Further reading suggestions
+      
+      Each version should be optimized for its specific audience and email format.
+    optimize: true
+    output_schema:
+      email_versions:
+        newsletter:
+          subject_line: string
+          content: string
+          cta_text: string
+        executive_summary:
+          subject_line: string
+          content: string
+          key_statistics: list
+        digest_version:
+          subject_line: string
+          bullet_points: list
+          link_text: string
+        educational_version:
+          subject_line: string
+          content: string
+          further_reading: list
+      email_metadata:
+        optimal_send_times: list
+        audience_segments: list
+        expected_open_rates: object
+
+  # Step 4: Comprehensive quality assessment
+  - name: assess_content_quality
+    type: map
+    prompt: |
+      Conduct a comprehensive quality assessment of all generated content versions.
+      
+      **Assessment Categories:**
+      
+      **Scientific Accuracy (30%):**
+      - Faithful to original research
+      - No misrepresentations or oversimplifications
+      - Appropriate caveats and limitations
+      - Technical details correctly conveyed
+      
+      **Audience Appropriateness (25%):**
+      - Language level matches target audience
+      - Tone appropriate for platform/format
+      - Cultural sensitivity and inclusivity
+      - Accessibility considerations
+      
+      **Engagement Potential (25%):**
+      - Compelling headlines and hooks
+      - Emotional resonance and human interest
+      - Shareability and viral potential
+      - Clear value proposition for readers
+      
+      **Content Quality (20%):**
+      - Clear structure and flow
+      - Error-free grammar and spelling
+      - Consistent voice and style
+      - Professional presentation
+      
+      **Specific Platform Optimization:**
+      - Character limits respected
+      - Platform best practices followed
+      - Visual content suggestions appropriate
+      - Hashtags and SEO optimized
+      
+      For each content piece, provide:
+      - Overall score (0-100)
+      - Category scores
+      - Specific strengths and weaknesses
+      - Actionable improvement recommendations
+      - Publication readiness assessment
+    optimize: true
+    output_schema:
+      quality_assessment:
+        overall_scores:
+          main_article: number
+          social_media_avg: number
+          email_versions_avg: number
+        detailed_scores:
+          scientific_accuracy: number
+          audience_appropriateness: number
+          engagement_potential: number
+          content_quality: number
+        content_analysis:
+          strengths: list
+          weaknesses: list
+          improvement_recommendations: list
+        publication_readiness:
+          ready_to_publish: list
+          needs_minor_edits: list
+          requires_major_revision: list
+        platform_optimization:
+          twitter_score: number
+          linkedin_score: number
+          facebook_score: number
+          instagram_score: number
+          email_scores: object

@@ -1,0 +1,24 @@
+# Essential Airflow 3.0 packages
+apache-airflow==3.0.6
+apache-airflow-providers-postgres==6.2.3
+apache-airflow-providers-fab==1.6.1
+
+# DocETL and processing
+docetl==0.2.5
+
+# arXiv and document processing
+arxiv==2.2.0
+PyMuPDF==1.26.4
+requests==2.32.5
+beautifulsoup4==4.13.5
+
+# LLM providers
+openai==1.103.0
+anthropic==0.65.0
+
+# Data processing
+pandas==2.3.2
+numpy==2.3.2
+
+# YAML processing
+PyYAML==6.0.2

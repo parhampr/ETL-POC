@@ -1,0 +1,256 @@
+# DocETL Pipeline Configuration for Scientific Paper Processing
+# This configuration handles the complete pipeline from PDF extraction to article generation
+
+default_model: gpt-4o-mini
+
+datasets:
+  arxiv_papers:
+    type: file
+    source: local
+    path: "/data/input/*.pdf"
+    parsing_tools:
+      - input_key: pdf_path
+        function: extract_pdf_text
+        output_key: full_text
+
+operations:
+  # Step 1: Extract and chunk document content
+  - name: chunk_document
+    type: split
+    split_key: full_text
+    method: token_count
+    chunk_size: 3000
+    chunk_overlap: 300
+    preserve_metadata: true
+
+  # Step 2: Extract structured information from each chunk
+  - name: extract_content_chunks
+    type: map
+    prompt: |
+      Analyze this section of a research paper and extract any of the following information that is present:
+      
+      INFORMATION TO EXTRACT:
+      1. **Research Question/Hypothesis**: Main question or hypothesis being investigated
+      2. **Methodology**: Research methods, experimental setup, or approach used
+      3. **Key Findings**: Important results, discoveries, or conclusions
+      4. **Technical Details**: Algorithms, formulas, or technical specifications
+      5. **Statistical Results**: Numbers, percentages, performance metrics
+      6. **Implications**: What the findings mean or their significance
+      7. **Limitations**: Any limitations or constraints mentioned
+      8. **Background Context**: Important background information or related work
+      
+      INSTRUCTIONS:
+      - Only extract information that is explicitly present in this text section
+      - Be precise and factual - do not infer or add information
+      - If no relevant information is found for a category, mark it as "not_found"
+      - Preserve important technical terms and numerical values exactly
+      
+      Return structured JSON with the extracted information.
+    optimize: true
+    output_schema:
+      research_question: string
+      methodology: string
+      key_findings: string
+      technical_details: string
+      statistical_results: string
+      implications: string
+      limitations: string
+      background_context: string
+      section_type: string
+      confidence_score: number
+
+  # Step 3: Synthesize information across all chunks
+  - name: synthesize_paper_content
+    type: reduce
+    prompt: |
+      Synthesize the extracted information from all sections of this research paper into a comprehensive summary.
+      
+      SYNTHESIS REQUIREMENTS:
+      1. **Title and Authors**: Extract from metadata or first chunk
+      2. **Abstract Summary**: 2-3 sentence summary of the paper's purpose and findings
+      3. **Research Question**: Main question or hypothesis (consolidated from chunks)
+      4. **Methodology Summary**: Overall approach and methods used
+      5. **Key Findings**: Most important results and discoveries
+      6. **Quantitative Results**: Specific numbers, improvements, or performance metrics
+      7. **Significance**: Why this research matters and its implications
+      8. **Limitations**: Any limitations or future work mentioned
+      9. **Technical Innovation**: Novel techniques, algorithms, or approaches
+      10. **Reproducibility Info**: Any information about code, data, or reproducibility
+      
+      SYNTHESIS GUIDELINES:
+      - Prioritize information that appears in multiple chunks (higher confidence)
+      - Resolve conflicts by noting uncertainty or providing both perspectives
+      - Maintain technical accuracy while making content accessible
+      - Include specific numerical results and performance metrics
+      - Note if certain information is missing or unclear
+      
+      Return well-structured JSON with all synthesized information.
+    optimize: true
+    output_schema:
+      paper_metadata:
+        title: string
+        authors: list
+        arxiv_id: string
+        categories: list
+      content_summary:
+        abstract_summary: string
+        research_question: string
+        methodology_summary: string
+        key_findings: list
+        quantitative_results: list
+        significance: string
+        limitations: string
+        technical_innovation: string
+        reproducibility_info: string
+      extraction_confidence:
+        overall_confidence: number
+        missing_sections: list
+        synthesis_notes: string
+
+  # Step 4: Generate engaging news article
+  - name: generate_news_article
+    type: map
+    prompt: |
+      Transform this research summary into an engaging, accessible news article for a general audience.
+      
+      ARTICLE REQUIREMENTS:
+      
+      **Structure:**
+      1. **Headline** (45-60 characters, compelling and SEO-friendly)
+      2. **Subtitle/Dek** (120-150 characters, elaborates on headline)
+      3. **Lead Paragraph** (Hook readers with the most interesting finding)
+      4. **Body Paragraphs** (700-800 words total):
+         - Explain the research problem/question
+         - Describe the approach in simple terms
+         - Present key findings with context
+         - Include "What This Means" section
+         - Discuss implications and future impact
+      5. **Pull Quotes** (2-3 compelling quotes that could be from researchers)
+      6. **Key Takeaways** (3-4 bullet points for quick scanning)
+      
+      **Writing Guidelines:**
+      - Use active voice and engaging language
+      - Explain technical concepts in everyday terms
+      - Include specific numbers and results where impressive
+      - Make it conversational but authoritative
+      - Focus on human impact and practical applications
+      - Avoid jargon unless necessary (and define it)
+      
+      **SEO Elements:**
+      - Meta description (150-160 characters)
+      - Topic tags (5-7 relevant tags)
+      - Alt text description for potential hero image
+      
+      **Quality Standards:**
+      - Factually accurate to the research
+      - Engaging enough to hold reader attention
+      - Accessible to college-educated general audience
+      - Structured for web reading (scannable)
+      
+      Return structured JSON with all article components.
+    optimize: true
+    output_schema:
+      article_content:
+        headline: string
+        subtitle: string
+        lead_paragraph: string
+        body_paragraphs: list
+        pull_quotes: list
+        key_takeaways: list
+        what_this_means_section: string
+      seo_elements:
+        meta_description: string
+        topic_tags: list
+        image_alt_text: string
+        slug_suggestion: string
+      article_metadata:
+        word_count: integer
+        reading_time_minutes: integer
+        target_audience: string
+        difficulty_level: string
+      source_attribution:
+        arxiv_id: string
+        paper_title: string
+        authors: list
+        publication_date: string
+    validation:
+      - "Is the article factually accurate based on the research summary?"
+      - "Is the language accessible to non-experts without losing scientific accuracy?"
+      - "Does the headline effectively capture the main finding?"
+      - "Is the article between 700-900 words?"
+      - "Are technical concepts explained clearly?"
+      - "Does the article have a compelling narrative flow?"
+
+  # Step 5: Quality assessment and scoring
+  - name: assess_article_quality
+    type: map
+    prompt: |
+      Evaluate this generated article across multiple quality dimensions and provide detailed scoring.
+      
+      EVALUATION CRITERIA:
+      
+      **Scientific Accuracy (25%)**:
+      - Faithful to original research findings
+      - Technical details correctly represented
+      - No scientific misconceptions or errors
+      - Appropriate caveats and limitations mentioned
+      
+      **Accessibility (25%)**:
+      - Language appropriate for general audience
+      - Technical terms explained clearly
+      - Concepts broken down logically
+      - Engaging narrative structure
+      
+      **Journalistic Quality (25%)**:
+      - Compelling headline and lead
+      - Well-structured article flow
+      - Appropriate use of quotes and examples
+      - Professional writing style
+      
+      **Engagement Potential (25%)**:
+      - Hook readers from the start
+      - Practical implications clear
+      - Human interest elements
+      - Shareable and memorable content
+      
+      For each criterion, provide:
+      - Score (0-100)
+      - Detailed explanation
+      - Specific suggestions for improvement
+      
+      OVERALL ASSESSMENT:
+      - Composite quality score (0-100)
+      - Publication readiness (Ready/Needs Revision/Not Suitable)
+      - Key strengths and weaknesses
+      - Revision recommendations
+      
+      Return detailed evaluation JSON.
+    optimize: true
+    output_schema:
+      quality_scores:
+        scientific_accuracy:
+          score: number
+          explanation: string
+          issues: list
+        accessibility:
+          score: number
+          explanation: string
+          issues: list
+        journalistic_quality:
+          score: number
+          explanation: string
+          issues: list
+        engagement_potential:
+          score: number
+          explanation: string
+          issues: list
+      overall_assessment:
+        composite_score: number
+        publication_status: string
+        strengths: list
+        weaknesses: list
+        revision_recommendations: list
+      processing_metadata:
+        evaluation_timestamp: string
+        evaluator_model: string
+        evaluation_confidence: number
